@@ -2,7 +2,7 @@ $(document).ready(function () {
     var margin = {top: 20, right: 5, bottom: 5, left: 70};
     var svgWidth = 1100;  // - margin.left - margin.right;
     var svgHeight = 700;  // - margin.top - margin.bottom;
-    
+
     var boxWidth = 10;
     var boxHeight = 50.0;
     var dayBoxes = 0;
@@ -75,6 +75,25 @@ $(document).ready(function () {
         });
 
         dayBoxes = roomCounter;
+
+        // Calculate values so we don't have to do it each time a frame is rendered
+        $.each(data, function (i, val) {
+            val['class'] = val.name.split(" ").join("_");
+            val['col'] = getCol(val.room);
+            val['color'] = getColor(val.name);
+            val['x'] = ((val.day * dayBoxes) + val['col']) * boxWidth;
+            val['y'] = ((timeToNumber(val.starttm) - firstTimeOfDay) * boxHeight);
+            val['tipDir'];
+            if (val.day == 0) {
+                val['tipDir'] = 'w';
+            } else if (val.day == 6) {
+                val['tipDir'] = 'e';
+            } else if ((val['y'] / boxHeight) < 1) {
+                val['tipDir'] = 's';
+            } else {
+                val['tipDir'] = 'n';
+            }
+        });
 
         // The +0.1 makes it draw the very last bar. +1 causes a little bit of the axis to hang over
         var width = boxWidth * dayBoxes * 7 + 0.1;
@@ -195,13 +214,13 @@ $(document).ready(function () {
         // Set block attributes
         var blockAttributes = blocks
                 .attr("class", function (d) {
-                    return d.name.split(" ").join("_");
+                    return d.class;
                 })
                 .attr("x", function (d) {
-                    return ((d.day * dayBoxes) + getCol(d.room)) * boxWidth;
+                    return d.x;
                 })
                 .attr("y", function (d) {
-                    return ((timeToNumber(d.starttm) - firstTimeOfDay) * boxHeight);
+                    return d.y;
                 })
                 .attr("width", function (d) {
                     return d.width * boxWidth;
@@ -210,18 +229,19 @@ $(document).ready(function () {
                     return (minutesToNumber(d.length) * boxHeight);
                 })
                 .style("fill", function (d) {
-                    return getColor(d.name); //d.color;
+                    return d.color;
                 })
                 .attr("rx", 4) // set the x corner curve radius
                 .attr("ry", 4) // set the y corner curve radius
                 .on('mouseover', function (d) {
+                    tip.direction(d.tipDir);
                     tip.show(d);
-                    d3.selectAll("." + d.name.split(" ").join("_")).style("fill", "#2C75FF");
+                    d3.selectAll("." + d.class).style("fill", "#2C75FF");
                     return;
                 })
                 .on('mouseout', function (d) {
                     tip.hide();
-                    d3.selectAll("." + d.name.split(" ").join("_")).style("fill", getColor(d.name));
+                    d3.selectAll("." + d.class).style("fill", d.color);
                     return;
                 });
     });

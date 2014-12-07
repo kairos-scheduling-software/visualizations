@@ -30,15 +30,41 @@
     width: 100%;
     line-height: 1;
     color: rgba(0, 0, 0, 0.8);
-    content: "\25BC";
     position: absolute;
     text-align: center;
     margin: 0 0 0 0;
 }
 
-/* Style northward tooltips differently */
+/* Style southward tooltips */
+.d3-tip.s:after {
+    content: "\25B2";
+    margin: 1px 0 0 0;
+    top: -7px;
+    left: 0;
+}
+
+/* Style northward tooltips */
 .d3-tip.n:after {
     margin: -1px 0 0 0;
     top: 100%;
     left: 0;
+    content: "\25BC";
+}
+
+/* Style eastward tooltips */
+.d3-tip.e:after {
+    margin: -1px 0 0 0;
+    text-align: left;
+    left: -6px;
+    top: 50%;
+    content: "\25C0";
+}
+
+/* Style westward tooltips */
+.d3-tip.w:after {
+    margin: -1px 0 0 0;
+    text-align: right;
+    right: -6px;
+    top: 50%;
+    content: "\25B6";
 }
