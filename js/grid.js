@@ -18,6 +18,9 @@ $(document).ready(function () {
     // Colors
     var scale = chroma.scale('RdYlBu').mode('lab');
 
+    // Start with popover hidden 
+    $('#po-d3').hide();
+
     var zoom = d3.behavior.zoom()
             .scaleExtent([1, 7])
             .on("zoom", zoomed);
@@ -39,7 +42,7 @@ $(document).ready(function () {
     });
 
     //Make an SVG Container
-    var svg = d3.select("body").append("svg")
+    var svg = d3.select("#d3").append("svg")
             .attr("width", svgWidth + margin.left + margin.right)
             .attr("height", svgHeight + margin.top + margin.bottom)
             .append("g")
@@ -59,8 +62,8 @@ $(document).ready(function () {
 
     //container.on("mousedown.zoom", null);
     //container.on("mousemove.zoom", null);
-    //tip.on("dblclick.zoom", null);
-    //tip.on("touchstart.zoom", null);
+    svg.on("dblclick.zoom", null);
+    svg.on("touchstart.zoom", null);
     //container.on("wheel.zoom", null);
     //container.on("mousewheel.zoom", null);
     //container.on("MozMousePixelScroll.zoom", null);
@@ -243,6 +246,16 @@ $(document).ready(function () {
                     tip.hide();
                     d3.selectAll("." + d.class).style("fill", d.color);
                     return;
+                })
+                .on("dblclick", function (d, i) {
+                    var theHeight = $('#po-d3').height();
+            
+                    // Find where the div is located on the screen
+                    var offset = $('#' + 'd3').offset();
+                    
+                    $('#po-d3').show();
+                    $('#po-d3').css('left', (d.x + margin.left + offset.left + 10) + 'px');
+                    $('#po-d3').css('top', (d.y + offset.top) + 'px');
                 });
     });
 
@@ -279,4 +292,14 @@ $(document).ready(function () {
         }
         return colors[cname];
     }
+
+    $('#po-d3-ok').click(function (e) {
+        // Submit fields via JSON here.
+        
+        // This goes in the AJAX success function
+        $('#po-d3').hide();
+        
+        // update the view based on new data received
+        
+    });
 });
