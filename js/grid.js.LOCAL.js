@@ -1,26 +1,20 @@
 $(document).ready(function () {
     var margin = {top: 20, right: 5, bottom: 5, left: 70};
     var svgWidth = 1100;  // - margin.left - margin.right;
-    var svgHeight = 570;  // - margin.top - margin.bottom;
+    var svgHeight = 700;  // - margin.top - margin.bottom;
 
-    var boxWidth = 14; //10
+    var boxWidth = 10;
     var boxHeight = 50.0;
-    var daysSkip = 1;
-    var numDays = 5; // 7
+    var numDays = 7;
     var dayBoxes = 0;
 
     var firstTimeOfDay = 8.00;
     var lastTimeOfDay = 19.00;
     var roomCounter = 0;
-    var classes = new Array();
-    var constraints = {};
-    var rooms = {};
-    var colors = {};
-    var colorsIndex = {};
-    var days = {};
+    var rooms = new Array();
+    var colors = new Array();
+    var colorsIndex = new Array();
     var colorCounter = 0;
-
-    var selectedName;
 
     // Colors
     var scale = chroma.scale('RdYlBu').mode('lab');
@@ -44,7 +38,7 @@ $(document).ready(function () {
                 + "</span></br>Room: <span style='color:red'>" + d.room + "</span>"
                 + "</span></br>Start: <span style='color:red'>" + d.starttm + "</span>"
                 + "</span></br>Length: <span style='color:red'>" + d.length + " min</span>"
-                + "</span></br>Day: <span style='color:red'>" + days[d.name] + "</span>"
+                + "</span></br>Day: <span style='color:red'>" + d.day + "</span>"
                 ;
     });
 
@@ -58,11 +52,9 @@ $(document).ready(function () {
 
     // Zoom only works when it is over a rendered item. Render a white background.
     svg.append("rect")
-            .attr("x", 0 - margin.left)
-            .attr("y", 0 - margin.top)
             .attr("width", "100%")
             .attr("height", "100%")
-            .attr("fill", "#d3d3d3");
+            .attr("fill", "white");
 
     // Enable tooltips
     svg.call(tip);
@@ -78,14 +70,13 @@ $(document).ready(function () {
     //container.on("MozMousePixelScroll.zoom", null);
 
     $.getJSON("classes_filt.json", function (data) {
+        var days = new Array();
+
         // loop over data, get room counts
         $.each(data, function (i, val) {
             // Assigns value and gets a final count
             getCol(val['room']);
             setClassColorIndex(val.name);
-
-            // Set constraints (repeats should not be an issue)
-            constraints[val.name] = new Array();
 
             // Kind of ugly... 
             if (val.day >= 0 && val.day <= 7) {
@@ -105,7 +96,7 @@ $(document).ready(function () {
             val['class'] = val.name.split(" ").join("_");
             val['col'] = getCol(val.room);
             val['color'] = getColor(val.name);
-            val['x'] = (((val.day * dayBoxes) + val['col']) * boxWidth) - (daysSkip * boxWidth * dayBoxes);
+            val['x'] = ((val.day * dayBoxes) + val['col']) * boxWidth;
             val['y'] = ((timeToNumber(val.starttm) - firstTimeOfDay) * boxHeight);
             val['height'] = (minutesToNumber(val.length) * boxHeight);
 
@@ -119,18 +110,6 @@ $(document).ready(function () {
                 val['tipDir'] = 'n';
             }
         });
-
-        $.each(colors, function (i, val) {
-            classes.push(i);
-        });
-
-        classes.sort();
-
-        $.each(classes, function (i, val) {
-            $('#addClass').append('<option>' + val + '</option>');
-        });
-
-        //$('#addClass').html(classes);
 
         // The +0.1 makes it draw the very last bar. +1 causes a little bit of the axis to hang over
         var width = boxWidth * dayBoxes * numDays + 0.1;
@@ -202,7 +181,7 @@ $(document).ready(function () {
                 .attr("text-anchor", "middle")
                 //.attr('class', 'name')
                 .text(function (d, i) {
-                    return weekdays[(i + daysSkip) - 1][0];
+                    return weekdays[i - 1][0];
                 });
 
         // Y bars
@@ -303,10 +282,9 @@ $(document).ready(function () {
                     var yOffset = (coords.y / svgHeight) * poHeight;
 
                     // ADD CODE HERE TO FLIP WHICH DIRECTION THE POPOVER DISPLAYS ON THE X AXIS
-                    selectedName = d.name;
+
                     // Set popover title
-                    $('#po-d3-name').html(d.name);
-                    $('#po-d3-title').html(d.title);
+                    $('#po-d3-title').html(d.name);
                     $('#po-room').html(d.room);
                     $('#po-dtm').html(days[d.name] + ", " + makeTimePretty(d.starttm) + ", " + d.length + " min");
 
@@ -318,15 +296,6 @@ $(document).ready(function () {
 
                     // Put arrow in correct spot
                     $('#po-d3-arrow').css('top', (d.height / 2) + yOffset + 'px');
-
-                    // Clear constraints
-                    $('#hConst').html('');
-                    $('#sConst').html('');
-
-                    // Re-populate
-                    $.each(constraints[selectedName], function (i, val) {
-                        $('#' + (val.constType == 'hard' ? "hConst" : "sConst")).append('<option data-value="' + (i - 1) + '">' + val.const + " : " + val.constVal + '</option>');
-                    });
                 });
     });
 
@@ -390,28 +359,6 @@ $(document).ready(function () {
         $('#po-d3').hide();
 
         // update the view based on new data received
-        console.log("send: " + JSON.stringify(constraints[selectedName]));
 
-    });
-
-    // Click close button
-    $('#po-d3-close').click(function (e) {
-        $('#po-d3').hide();
-    });
-
-    // Constraint add button
-    $('#po-add').click(function (e) {
-        var addConst = $('#addConst').find(":selected").text();
-        var addClass = $('#addClass').find(":selected").text();
-        var type = 'soft';
-
-        if ($('#hsCb').prop('checked')) {
-            type = 'hard';
-        }
-
-        var i = constraints[selectedName].push({"const": addConst, "constVal": addClass, "constType": type});
-
-        // data-value gives us the index of the item to be removed
-        $('#' + (type == 'hard' ? "hConst" : "sConst")).append('<option data-value="' + (i - 1) + '">' + addConst + " : " + addClass + '</option>');
     });
 });
