@@ -69,6 +69,8 @@
     content: "\25B6";
 }
 
-.popover {
+#po-d3 {
+    position: fixed;
+    width: 400px;
     max-width: 400px;
 }
