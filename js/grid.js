@@ -9,12 +9,13 @@ var gridClassPrevColor = "";
 var gridColors = {};
 var gridColorCounter = 0;
 var gridColorsIndex = {};
+var isDragging = 0;
 
 var svg;
 var container;
 
-// Colors
-var scale = chroma.scale('RdYlBu').mode('lab');
+// Colors -- changed to only navy for now
+var scale = chroma.scale(['#0193e0', '#0193e0']).mode('lab'); //chroma.scale(['navy']); //.mode('lab');
 
 // Start with popover hidden 
 $('#po-d3').hide();
@@ -59,8 +60,7 @@ function load_grid(data) {
             .attr("width", svgWidth + gridMargin.left + gridMargin.right)
             .attr("height", svgHeight + gridMargin.top + gridMargin.bottom)
             .append("g")
-            .attr("transform", "translate(" + gridMargin.left + "," + gridMargin.top + ")")
-            .call(d3Zoom);
+            .attr("transform", "translate(" + gridMargin.left + "," + gridMargin.top + ")");
 
     // Zoom only works when it is over a rendered item. Render a white background.
     svg.append("rect")
@@ -68,19 +68,56 @@ function load_grid(data) {
             .attr("y", 0 - gridMargin.top)
             .attr("width", "100%")
             .attr("height", "100%")
-            .attr("fill", "#d3d3d3");
+            .attr("fill", "#d3d3d3")
+            .call(d3Zoom);
     // Enable tooltips
     svg.call(tip);
 
     container = svg.append("g");
-
-    //container.on("mousedown.zoom", null);
-    //container.on("mousemove.zoom", null);
+    //svg.on("mousedown.zoom", null);
+    svg.on("mousemove.zoom", null);
     svg.on("dblclick.zoom", null);
     svg.on("touchstart.zoom", null);
     //container.on("wheel.zoom", null);
     //container.on("mousewheel.zoom", null);
     //container.on("MozMousePixelScroll.zoom", null);
+
+    // Define drag beavior
+    var drag = d3.behavior.drag()
+            .on("drag", dragmove)
+            .on("dragstart", function (d) {
+                d3.selectAll("." + d.class).style("fill", gridClassHighlightColor);
+                isDragging = d;
+            })
+            .on("dragend", function (d) {
+                d3.selectAll("." + d.class).style("fill", d.color);
+                isDragging = 0;
+            })
+            ;
+    function dragmove(d) {
+        var x = d3.event.x - d.x - (boxWidth >> 2);
+        var y = d3.event.y - d.y - (d.height >> 2);
+        ;
+
+        // snap to boxwidth
+        if (d3.event.x > (width - boxWidth)) {
+            x = Math.round((width - d.x) - boxWidth);
+        } else if (x % boxWidth !== 0) {
+            if (d.x + x < 0) {
+                x = (d.x * -1);
+            } else {
+                x = (Math.round(x / boxWidth) * boxWidth);
+            }
+        }
+
+        if (d3.event.y < 0) {
+            y = d.y * -1;
+        } else if (d3.event.y + d.height > height) {
+            y = Math.round((height - d.y) - d.height);
+        }
+
+        d3.select(this).attr("transform", "translate(" + x + "," + y + ")");
+    }
 
     // loop over data, get room counts
     $.each(data, function (i, val) {
@@ -166,32 +203,7 @@ function load_grid(data) {
                 return 0.3;
             });
 
-    // X Labels 
-
-    /*
-     var gText = container.selectAll("gText")
-     .data(d3.range(0, width, boxWidth * dayBoxes))
-     .enter().append("svg:g")
-     .attr("y", 0)
-     .attr("x", function (d) {
-     return d;
-     });
-     //.attr("transform", function (d, i) {
-     //    return "translate(" + (i * boxWidth - boxWidth) + ",0)";
-     //});
-     gText.append("text")
-     .attr("dx", "5px")
-     .attr("dy", "-2px")
-     .attr("font-size", 14)
-     .text(function (d, i) {
-     return "Room";
-     })
-     //.attr("text-anchor", "end")
-     //.attr("transform", function (d, i) {
-     //    return "translate(20,0) rotate(-90,0,0)";
-     //});
-     ;
-     */
+    // X
     container.selectAll(".x_axis")
             .data(d3.range(0, width, boxWidth * dayBoxes))
             .enter().append("text")
@@ -249,12 +261,13 @@ function load_grid(data) {
     var blocks = container.selectAll("rect")
             .data(data)
             .enter()
-            .append("rect");
+            .append("rect")
+            .call(drag)
+            .on("mousedown.zoom", null);
 
     // Set block attributes
     var blockAttributes = blocks
             .attr("class", function (d) {
-                //console.log(JSON.stringify(d));
                 return d.class;
             })
             .attr("x", function (d) {
@@ -275,15 +288,32 @@ function load_grid(data) {
             .attr("rx", 4) // set the x corner curve radius
             .attr("ry", 4) // set the y corner curve radius
             .on('mouseover', function (d) {
+                if (isDragging) {
+                    if (d.name === isDragging.name) {
+                        return;
+                    }
+                    d3.selectAll("." + d.class).style("fill", '#CC0000');
+                } else {
+                    d3.selectAll("." + d.class).style("fill", gridClassHighlightColor);
+                }
                 tip.direction(d.tipDir);
                 tip.show(d);
-                d3.selectAll("." + d.class).style("fill", gridClassHighlightColor);
                 return;
             })
             .on('mouseout', function (d) {
+
+                if (isDragging) {
+                    if (d.name === isDragging.name) {
+                        return;
+                    }
+                }
+
                 tip.hide();
                 d3.selectAll("." + d.class).style("fill", d.color);
                 return;
+            })
+            .on("click", function (d, i) {
+                d3.event.stopPropagation();
             })
             .on("dblclick", function (d, i) {
                 var xOffset = boxWidth * d3Zoom.scale();
@@ -293,20 +323,15 @@ function load_grid(data) {
 
                 // Get coords, translate them to svg coordinates
                 var ctm = this.getCTM();
-                console.log(JSON.stringify(d3Zoom.scale()));
                 var coords = getGridScreenCoords(d.x, d.y, ctm);
-
-                //console.log(JSON.stringify(coords) + "\n" + JSON.stringify(offset));
-                //console.log($('svg')[0].getBoundingClientRect());
-                //console.log(d3.mouse(this));
 
                 // Height of elements
                 var poHeight = $('#po-d3').height();
                 var svgHeight = $('#d3').height();
 
                 // Calculate new locations
-                var px = (coords.x + offset.left);
-                var py = (coords.y + offset.top);
+                //var px = (coords.x + offset.left);
+                //var py = (coords.y + offset.top);
 
                 // Offset y value based on where we are on the screen
                 var yOffset = (coords.y / svgHeight) * poHeight;
@@ -322,8 +347,6 @@ function load_grid(data) {
                 if (arrow_y < 15) {
                     arrow_y = 15;
                 }
-
-                console.log(final_y);
 
                 // ADD CODE HERE TO FLIP WHICH DIRECTION THE POPOVER DISPLAYS ON THE X AXIS
                 gridClassSelected = d.name;
@@ -390,6 +413,50 @@ function load_grid(data) {
         return gridColorsIndex[cname];
     }
 
+    function collide(element) {
+        // Element #1
+        var ex1 = element.x;
+        var ey1 = element.y;
+        var ex2 = ex1 + element.length;
+        var ey2 = ey1 + element.height;
+
+        var nx1;
+        var ny1;
+        var nx2;
+        var ny2;
+
+        //loop
+        for (var i = 0; i < data.length; i++) {
+
+            if (data[i] === element) {
+                continue;
+            }
+
+            // Element #2
+            nx1 = data[i].x;
+            ny1 = data[i].y;
+            nx2 = nx1 + data[i].length;
+            ny2 = ny1 + data[i].height;
+
+            // Top corner
+            if(
+                checkPoint(ex1, ey1, ex2, ey2, nx1, ny1) ||
+                checkPoint(ex1, ey1, ex2, ey2, nx2, ny1) ||
+                checkPoint(ex1, ey1, ex2, ey2, nx1, ny2) ||
+                checkPoint(ex1, ey1, ex2, ey2, nx2, ny2)
+            ) {
+                return true;
+            }
+
+        }
+
+        return false;
+    }
+
+    function checkPoint(ex1, ey1, ex2, ey2, nx, ny) {
+        return (nx >= ex1) && (nx <= ex2) && (ny >= ey1) && (ny <= ey2);
+    }
+
     $('#po-d3-ok').click(function (e) {
         // Submit fields via JSON here.
 
@@ -450,7 +517,6 @@ function getGridScreenCoords(x, y, ctm) {
 }
 
 function getGridColor(cname) {
-    //var cname = classname.split(" ").join("_").substring(0, classname.indexOf("-"));
     if (!gridColors[cname]) {
         gridColors[cname] = scale((gridColorsIndex[cname]) / ((gridColorCounter - 1))).hex();
     }
