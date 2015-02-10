@@ -92,6 +92,7 @@ function load_grid(data) {
             .on("dragend", function (d) {
                 d3.selectAll("." + d.class).style("fill", d.color);
                 isDragging = 0;
+                console.log("send: " + JSON.stringify(d));
             })
             ;
     function dragmove(d) {
@@ -115,14 +116,16 @@ function load_grid(data) {
         } else if (d3.event.y + d.height > height) {
             y = Math.round((height - d.y) - d.height);
         }
-        
-        d3.selectAll("." + d.class).attr("x", function(d) {
-            return d.x + x;
-        }).attr("y", function(d) {
-            return d.y + y;
-        }).call(function(d) {
+
+        d3.selectAll("." + d.class).attr("x", function (d) {
+            d.x += x;
+            return d.x;
+        }).attr("y", function (d) {
+            d.y += y;
+            return d.y;
+        }).call(function (d) {
             // Check collide
-           //console.log(collide(d));
+            //console.log(collide(d));
         });
 
         //d3.select(this).attr("transform", "translate(" + x + "," + y + ")");
@@ -388,7 +391,7 @@ function load_grid(data) {
     function minutesToNumber(minutes) {
         return ((1.666) * minutes) / 100; // 100/60 = 1.666
     }
-    
+
     function numberToMinutes(n) {
         return ((1.666) / n) * 100; // 100/60 = 1.666
     }
@@ -438,7 +441,7 @@ function load_grid(data) {
         var ny1;
         var nx2;
         var ny2;
-        
+
         var result = false;
 
         //loop
@@ -456,12 +459,12 @@ function load_grid(data) {
             ny2 = ny1 + data[i].height;
 
             // Top corner
-            if(
-                checkPoint(ex1, ey1, ex2, ey2, nx1, ny1) ||
-                checkPoint(ex1, ey1, ex2, ey2, nx2, ny1) ||
-                checkPoint(ex1, ey1, ex2, ey2, nx1, ny2) ||
-                checkPoint(ex1, ey1, ex2, ey2, nx2, ny2)
-            ) {
+            if (
+                    checkPoint(ex1, ey1, ex2, ey2, nx1, ny1) ||
+                    checkPoint(ex1, ey1, ex2, ey2, nx2, ny1) ||
+                    checkPoint(ex1, ey1, ex2, ey2, nx1, ny2) ||
+                    checkPoint(ex1, ey1, ex2, ey2, nx2, ny2)
+                    ) {
                 result = true;
                 break;
             }
