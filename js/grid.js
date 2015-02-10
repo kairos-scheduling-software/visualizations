@@ -115,8 +115,17 @@ function load_grid(data) {
         } else if (d3.event.y + d.height > height) {
             y = Math.round((height - d.y) - d.height);
         }
+        
+        d3.selectAll("." + d.class).attr("x", function(d) {
+            return d.x + x;
+        }).attr("y", function(d) {
+            return d.y + y;
+        }).call(function(d) {
+            // Check collide
+           //console.log(collide(d));
+        });
 
-        d3.select(this).attr("transform", "translate(" + x + "," + y + ")");
+        //d3.select(this).attr("transform", "translate(" + x + "," + y + ")");
     }
 
     // loop over data, get room counts
@@ -290,6 +299,7 @@ function load_grid(data) {
             .on('mouseover', function (d) {
                 if (isDragging) {
                     if (d.name === isDragging.name) {
+                        //tip.show(d);
                         return;
                     }
                     d3.selectAll("." + d.class).style("fill", '#CC0000');
@@ -378,6 +388,10 @@ function load_grid(data) {
     function minutesToNumber(minutes) {
         return ((1.666) * minutes) / 100; // 100/60 = 1.666
     }
+    
+    function numberToMinutes(n) {
+        return ((1.666) / n) * 100; // 100/60 = 1.666
+    }
 
     function timeToNumber(dtm) {
         var hour = parseFloat(dtm.substring(0, 2));
@@ -424,11 +438,14 @@ function load_grid(data) {
         var ny1;
         var nx2;
         var ny2;
+        
+        var result = false;
 
         //loop
         for (var i = 0; i < data.length; i++) {
 
-            if (data[i] === element) {
+            if (data[i].class === element.class) {
+                console.log("same class");
                 continue;
             }
 
@@ -445,12 +462,13 @@ function load_grid(data) {
                 checkPoint(ex1, ey1, ex2, ey2, nx1, ny2) ||
                 checkPoint(ex1, ey1, ex2, ey2, nx2, ny2)
             ) {
-                return true;
+                result = true;
+                break;
             }
 
         }
 
-        return false;
+        return result;
     }
 
     function checkPoint(ex1, ey1, ex2, ey2, nx, ny) {
